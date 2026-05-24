@@ -1,20 +1,24 @@
 {
   "name": "ap3x-master-controller",
-  "version": "1.0.0",
-  "description": "AP3X AI Master Controller — multi-fleet management control plane",
-  "type": "module",
-  "engines": {
-    "node": ">=18.0.0"
-  },
+  "version": "2.0.0",
+  "private": true,
+  "description": "AP3X Master Controller — fleet control plane, Fleet OS, and Driver PWA",
+  "workspaces": [
+    "apps/controller",
+    "apps/fleet-os",
+    "apps/pwa"
+  ],
   "scripts": {
-    "dev":   "vercel dev",
-    "build": "vercel build",
-    "deploy": "vercel --prod"
+    "dev:controller": "npm run dev --workspace=apps/controller",
+    "dev:fleet-os":   "npm run dev --workspace=apps/fleet-os",
+    "dev:pwa":        "npm run dev --workspace=apps/pwa",
+    "build:all": "npm run build --workspace=apps/controller && npm run build --workspace=apps/fleet-os && npm run build --workspace=apps/pwa",
+    "build:controller": "npm run build --workspace=apps/controller",
+    "build:fleet-os":   "npm run build --workspace=apps/fleet-os",
+    "build:pwa":        "npm run build --workspace=apps/pwa"
   },
-  "dependencies": {},
-  "devDependencies": {
-    "vercel": "^34.0.0"
-  },
-  "license": "UNLICENSED",
-  "private": true
+  "engines": {
+    "node": ">=18.0.0",
+    "npm":  ">=9.0.0"
+  }
 }
