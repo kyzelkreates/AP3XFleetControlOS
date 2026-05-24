@@ -23,6 +23,11 @@
     { "src": "/api/device/heartbeat",   "dest": "/api/device/heartbeat.js" },
     { "src": "/api/device/checkin",     "dest": "/api/device/checkin.js" },
 
+    { "src": "/api/nav/event",          "dest": "/api/nav/event.js" },
+
+    { "src": "/api/obs/query",          "dest": "/api/obs/query.js" },
+    { "src": "/api/obs/export",         "dest": "/api/obs/export.js" },
+
     { "src": "/ui/(.*)",                "dest": "/ui/$1" },
     { "src": "/pwa/(.*)",               "dest": "/pwa/$1" },
     { "src": "/",                       "dest": "/ui/dashboard.html" }
