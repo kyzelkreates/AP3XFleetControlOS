@@ -3,41 +3,51 @@
   "buildCommand": null,
   "outputDirectory": null,
   "builds": [
-    { "src": "api/**/*.js",  "use": "@vercel/node" },
-    { "src": "ui/**/*.html", "use": "@vercel/static" },
-    { "src": "pwa/**/*",     "use": "@vercel/static" }
+    { "src": "api/fleets.js",  "use": "@vercel/node" },
+    { "src": "api/deploy.js",  "use": "@vercel/node" },
+    { "src": "api/devices.js", "use": "@vercel/node" },
+    { "src": "api/drivers.js", "use": "@vercel/node" },
+    { "src": "api/hazards.js", "use": "@vercel/node" },
+    { "src": "api/safety.js",  "use": "@vercel/node" },
+    { "src": "api/tacho.js",   "use": "@vercel/node" },
+    { "src": "api/nav.js",     "use": "@vercel/node" },
+    { "src": "api/obs.js",     "use": "@vercel/node" },
+    { "src": "ui/**/*.html",   "use": "@vercel/static" },
+    { "src": "pwa/**/*",       "use": "@vercel/static" }
   ],
   "routes": [
-    { "src": "/api/createFleet",          "dest": "/api/createFleet.js" },
-    { "src": "/api/updateFleet",          "dest": "/api/updateFleet.js" },
-    { "src": "/api/deployFleet",          "dest": "/api/deployFleet.js" },
-    { "src": "/api/safetyCheck",          "dest": "/api/safetyCheck.js" },
+    { "src": "/api/fleets",             "dest": "/api/fleets.js"  },
+    { "src": "/api/createFleet",        "dest": "/api/fleets.js"  },
+    { "src": "/api/updateFleet",        "dest": "/api/fleets.js"  },
 
-    { "src": "/api/deployment/status",    "dest": "/api/deployment/status.js" },
-    { "src": "/api/deployment/list",      "dest": "/api/deployment/list.js" },
-    { "src": "/api/deployment/rollback",  "dest": "/api/deployment/rollback.js" },
-    { "src": "/api/deployment/preflight", "dest": "/api/deployment/preflight.js" },
+    { "src": "/api/deploy",             "dest": "/api/deploy.js"  },
+    { "src": "/api/deployFleet",        "dest": "/api/deploy.js"  },
+    { "src": "/api/deployment/(.*)",    "dest": "/api/deploy.js"  },
 
-    { "src": "/api/hazard/report",        "dest": "/api/hazard/report.js" },
-    { "src": "/api/hazard/confirm",       "dest": "/api/hazard/confirm.js" },
-    { "src": "/api/hazard/dispute",       "dest": "/api/hazard/dispute.js" },
+    { "src": "/api/devices",            "dest": "/api/devices.js" },
+    { "src": "/api/device/(.*)",        "dest": "/api/devices.js" },
 
-    { "src": "/api/tacho/activity",       "dest": "/api/tacho/activity.js" },
-    { "src": "/api/tacho/session",        "dest": "/api/tacho/session.js" },
+    { "src": "/api/drivers",            "dest": "/api/drivers.js" },
+    { "src": "/api/driver/(.*)",        "dest": "/api/drivers.js" },
 
-    { "src": "/api/driver/sync",          "dest": "/api/driver/sync.js" },
+    { "src": "/api/hazards",            "dest": "/api/hazards.js" },
+    { "src": "/api/hazard/(.*)",        "dest": "/api/hazards.js" },
 
-    { "src": "/api/device/heartbeat",     "dest": "/api/device/heartbeat.js" },
-    { "src": "/api/device/checkin",       "dest": "/api/device/checkin.js" },
+    { "src": "/api/safety",             "dest": "/api/safety.js"  },
+    { "src": "/api/safetyCheck",        "dest": "/api/safety.js"  },
 
-    { "src": "/api/nav/event",            "dest": "/api/nav/event.js" },
+    { "src": "/api/tacho",              "dest": "/api/tacho.js"   },
+    { "src": "/api/tacho/(.*)",         "dest": "/api/tacho.js"   },
 
-    { "src": "/api/obs/query",            "dest": "/api/obs/query.js" },
-    { "src": "/api/obs/export",           "dest": "/api/obs/export.js" },
+    { "src": "/api/nav",                "dest": "/api/nav.js"     },
+    { "src": "/api/nav/(.*)",           "dest": "/api/nav.js"     },
 
-    { "src": "/ui/(.*)",                  "dest": "/ui/$1" },
-    { "src": "/pwa/(.*)",                 "dest": "/pwa/$1" },
-    { "src": "/",                         "dest": "/ui/dashboard.html" }
+    { "src": "/api/obs",                "dest": "/api/obs.js"     },
+    { "src": "/api/obs/(.*)",           "dest": "/api/obs.js"     },
+
+    { "src": "/ui/(.*)",                "dest": "/ui/$1"          },
+    { "src": "/pwa/(.*)",               "dest": "/pwa/$1"         },
+    { "src": "/",                       "dest": "/ui/dashboard.html" }
   ],
   "headers": [
     {
