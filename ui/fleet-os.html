@@ -1,0 +1,917 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>AP3X — Fleet Control OS</title>
+  <style>
+    /* ─── RESET & TOKENS ─────────────────────────────────────── */
+    :root {
+      --purple:     #7C3AED;
+      --purple-dim: #4C1D95;
+      --purple-glow:#A78BFA22;
+      --dark:       #080812;
+      --panel:      #0F0F1E;
+      --card:       #141428;
+      --border:     #1E1E3A;
+      --border-hi:  #3B3B6A;
+      --text:       #E2E8F0;
+      --muted:      #64748B;
+      --green:      #4ADE80;
+      --green-bg:   #14532D;
+      --red:        #F87171;
+      --red-bg:     #7F1D1D;
+      --amber:      #FBBF24;
+      --amber-bg:   #78350F;
+      --blue:       #60A5FA;
+      --blue-bg:    #1E3A5F;
+      --sidebar-w:  240px;
+    }
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    html, body { height: 100%; }
+    body {
+      background: var(--dark);
+      color: var(--text);
+      font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+      font-size: 14px;
+      display: flex;
+      overflow: hidden;
+    }
+
+    /* ─── SCROLLBAR ──────────────────────────────────────────── */
+    ::-webkit-scrollbar { width: 4px; height: 4px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: var(--border-hi); border-radius: 4px; }
+
+    /* ─── SIDEBAR ────────────────────────────────────────────── */
+    #sidebar {
+      width: var(--sidebar-w);
+      min-width: var(--sidebar-w);
+      background: var(--panel);
+      border-right: 1px solid var(--border);
+      display: flex;
+      flex-direction: column;
+      height: 100vh;
+      overflow: hidden;
+    }
+    .sidebar-logo {
+      padding: 1.25rem 1.25rem 1rem;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      gap: 0.6rem;
+    }
+    .sidebar-logo .mark {
+      width: 30px; height: 30px;
+      background: var(--purple);
+      border-radius: 8px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 14px; font-weight: 900; color: #fff;
+    }
+    .sidebar-logo .name { font-size: 1rem; font-weight: 800; letter-spacing: 2px; color: var(--purple); }
+    .sidebar-logo .sub  { font-size: 0.65rem; color: var(--muted); letter-spacing: 1px; margin-top: 1px; }
+
+    .fleet-selector {
+      padding: 0.75rem 1rem;
+      border-bottom: 1px solid var(--border);
+    }
+    .fleet-selector label { font-size: 0.65rem; color: var(--muted); text-transform: uppercase; letter-spacing: 1px; display: block; margin-bottom: 0.4rem; }
+    .fleet-selector select {
+      width: 100%; background: var(--card); border: 1px solid var(--border);
+      color: var(--text); border-radius: 6px; padding: 0.45rem 0.65rem;
+      font-size: 0.8rem; outline: none; cursor: pointer;
+    }
+    .fleet-selector select:focus { border-color: var(--purple); }
+
+    .nav { flex: 1; overflow-y: auto; padding: 0.5rem 0; }
+    .nav-section { padding: 0.5rem 1rem 0.25rem; font-size: 0.6rem; color: var(--muted); text-transform: uppercase; letter-spacing: 1.5px; }
+    .nav-item {
+      display: flex; align-items: center; gap: 0.65rem;
+      padding: 0.55rem 1.25rem; cursor: pointer;
+      color: var(--muted); font-size: 0.82rem; font-weight: 500;
+      border-left: 2px solid transparent;
+      transition: all 0.15s;
+      user-select: none;
+    }
+    .nav-item:hover  { color: var(--text); background: var(--purple-glow); }
+    .nav-item.active { color: var(--purple); border-left-color: var(--purple); background: var(--purple-glow); }
+    .nav-item .icon  { font-size: 1rem; width: 20px; text-align: center; }
+    .nav-item .badge {
+      margin-left: auto; font-size: 0.65rem; padding: 0.1rem 0.45rem;
+      border-radius: 999px; background: var(--purple-dim); color: #C4B5FD;
+      font-weight: 700;
+    }
+
+    .sidebar-footer {
+      padding: 0.75rem 1rem;
+      border-top: 1px solid var(--border);
+      font-size: 0.7rem; color: var(--muted);
+    }
+    .pulse-dot {
+      display: inline-block; width: 6px; height: 6px; border-radius: 50%;
+      background: var(--green); margin-right: 0.4rem;
+      animation: pulse 2s infinite;
+    }
+    @keyframes pulse {
+      0%, 100% { opacity: 1; } 50% { opacity: 0.3; }
+    }
+
+    /* ─── MAIN CONTENT ───────────────────────────────────────── */
+    #main {
+      flex: 1; display: flex; flex-direction: column;
+      height: 100vh; overflow: hidden;
+    }
+
+    /* ─── TOP BAR ────────────────────────────────────────────── */
+    #topbar {
+      height: 52px; min-height: 52px;
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 0 1.5rem;
+      border-bottom: 1px solid var(--border);
+      background: var(--panel);
+    }
+    .topbar-title { font-size: 0.85rem; font-weight: 700; color: var(--text); letter-spacing: 0.5px; }
+    .topbar-right { display: flex; align-items: center; gap: 1rem; }
+    .topbar-clock { font-size: 0.75rem; color: var(--muted); font-variant-numeric: tabular-nums; }
+    .topbar-tag {
+      font-size: 0.65rem; background: var(--purple-dim); color: #C4B5FD;
+      padding: 0.2rem 0.6rem; border-radius: 999px; font-weight: 600; letter-spacing: 1px;
+    }
+    .btn-refresh {
+      background: transparent; border: 1px solid var(--border);
+      color: var(--muted); border-radius: 6px; padding: 0.3rem 0.7rem;
+      font-size: 0.75rem; cursor: pointer; transition: all 0.15s;
+    }
+    .btn-refresh:hover { border-color: var(--purple); color: var(--purple); }
+
+    /* ─── VIEWS ──────────────────────────────────────────────── */
+    #content { flex: 1; overflow-y: auto; padding: 1.5rem; }
+
+    .view { display: none; }
+    .view.active { display: block; }
+
+    /* ─── KPI ROW ────────────────────────────────────────────── */
+    .kpi-row {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+      gap: 0.75rem; margin-bottom: 1.5rem;
+    }
+    .kpi {
+      background: var(--card); border: 1px solid var(--border);
+      border-radius: 10px; padding: 1rem 1.1rem;
+      position: relative; overflow: hidden;
+    }
+    .kpi::after {
+      content: ""; position: absolute; bottom: 0; left: 0; right: 0;
+      height: 2px; background: var(--purple); border-radius: 0 0 10px 10px;
+    }
+    .kpi .k-label { font-size: 0.65rem; color: var(--muted); text-transform: uppercase; letter-spacing: 1.2px; margin-bottom: 0.4rem; }
+    .kpi .k-val   { font-size: 1.8rem; font-weight: 800; color: var(--purple); line-height: 1; }
+    .kpi .k-sub   { font-size: 0.7rem; color: var(--muted); margin-top: 0.25rem; }
+
+    /* ─── SECTION HEADER ─────────────────────────────────────── */
+    .sec-header {
+      display: flex; align-items: center; justify-content: space-between;
+      margin-bottom: 0.75rem;
+    }
+    .sec-title {
+      font-size: 0.65rem; text-transform: uppercase; letter-spacing: 1.5px; color: var(--muted);
+    }
+    .sec-count {
+      font-size: 0.65rem; background: var(--card); border: 1px solid var(--border);
+      padding: 0.15rem 0.5rem; border-radius: 999px; color: var(--muted);
+    }
+
+    /* ─── TABLE ──────────────────────────────────────────────── */
+    .table-wrap {
+      background: var(--card); border: 1px solid var(--border);
+      border-radius: 10px; overflow: hidden; margin-bottom: 1.5rem;
+    }
+    table { width: 100%; border-collapse: collapse; }
+    thead th {
+      background: var(--panel); padding: 0.55rem 0.9rem;
+      font-size: 0.62rem; text-transform: uppercase; letter-spacing: 1.2px;
+      color: var(--muted); text-align: left; font-weight: 600;
+      border-bottom: 1px solid var(--border);
+    }
+    tbody tr { border-bottom: 1px solid var(--border); transition: background 0.1s; }
+    tbody tr:last-child { border-bottom: none; }
+    tbody tr:hover { background: var(--purple-glow); }
+    tbody td {
+      padding: 0.6rem 0.9rem; font-size: 0.8rem; color: var(--text);
+      vertical-align: middle;
+    }
+    .mono { font-family: monospace; font-size: 0.72rem; color: var(--muted); }
+    .empty-row td { text-align: center; color: var(--muted); padding: 2rem; font-size: 0.8rem; }
+
+    /* ─── BADGES ─────────────────────────────────────────────── */
+    .badge {
+      display: inline-block; font-size: 0.62rem; font-weight: 700;
+      padding: 0.2rem 0.55rem; border-radius: 999px;
+      text-transform: uppercase; letter-spacing: 0.8px;
+    }
+    .badge-active   { background: var(--green-bg);  color: var(--green); }
+    .badge-bound    { background: var(--purple-dim); color: #C4B5FD; }
+    .badge-unbound  { background: var(--amber-bg);   color: var(--amber); }
+    .badge-revoked  { background: var(--red-bg);     color: var(--red); }
+    .badge-deploying{ background: var(--blue-bg);    color: var(--blue); }
+    .badge-online   { background: var(--green-bg);   color: var(--green); }
+    .badge-offline  { background: #1E1E1E;           color: var(--muted); }
+    .badge-deregistered { background: var(--red-bg); color: var(--red); }
+
+    /* ─── IDENTITY GRAPH ─────────────────────────────────────── */
+    .identity-cards { display: flex; flex-direction: column; gap: 0.6rem; margin-bottom: 1.5rem; }
+    .identity-card {
+      background: var(--card); border: 1px solid var(--border);
+      border-radius: 10px; padding: 0.85rem 1.1rem;
+      display: grid; grid-template-columns: 1fr auto 1fr;
+      align-items: center; gap: 0.75rem;
+    }
+    .identity-card:hover { border-color: var(--border-hi); }
+    .id-node { display: flex; flex-direction: column; gap: 0.15rem; }
+    .id-node .node-label { font-size: 0.6rem; color: var(--muted); text-transform: uppercase; letter-spacing: 1px; }
+    .id-node .node-val   { font-size: 0.82rem; font-weight: 600; }
+    .id-node .node-meta  { font-size: 0.68rem; color: var(--muted); }
+    .id-arrow { text-align: center; color: var(--purple); font-size: 1rem; white-space: nowrap; }
+    .id-status { margin-left: auto; }
+
+    /* ─── EVENT LOG ──────────────────────────────────────────── */
+    .event-log {
+      background: var(--panel); border: 1px solid var(--border);
+      border-radius: 10px; overflow: hidden; margin-bottom: 1.5rem;
+    }
+    .event-log-header {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 0.6rem 1rem; border-bottom: 1px solid var(--border);
+      background: var(--card);
+    }
+    .event-log-header span { font-size: 0.65rem; color: var(--muted); text-transform: uppercase; letter-spacing: 1.2px; }
+    .event-log-header .live { font-size: 0.65rem; color: var(--green); display: flex; align-items: center; gap: 0.3rem; }
+    .event-entries {
+      max-height: 380px; overflow-y: auto;
+      font-family: monospace; font-size: 0.75rem;
+    }
+    .event-entry {
+      display: grid; grid-template-columns: 90px 180px 1fr;
+      gap: 0.5rem; align-items: start;
+      padding: 0.45rem 1rem; border-bottom: 1px solid var(--border);
+      transition: background 0.1s;
+    }
+    .event-entry:last-child { border-bottom: none; }
+    .event-entry:hover { background: var(--purple-glow); }
+    .ev-time { color: var(--muted); white-space: nowrap; }
+    .ev-type { color: var(--purple); font-weight: 700; }
+    .ev-fleet { color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .no-events { padding: 2rem; text-align: center; color: var(--muted); font-size: 0.8rem; }
+
+    /* ─── FLEET OVERVIEW CARDS ───────────────────────────────── */
+    .fleet-cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 0.75rem; margin-bottom: 1.5rem; }
+    .fleet-ov-card {
+      background: var(--card); border: 1px solid var(--border);
+      border-radius: 10px; padding: 1rem 1.1rem; cursor: pointer; transition: border-color 0.15s;
+    }
+    .fleet-ov-card:hover { border-color: var(--purple); }
+    .fleet-ov-name { font-size: 0.95rem; font-weight: 700; margin-bottom: 0.2rem; }
+    .fleet-ov-id   { font-size: 0.65rem; color: var(--muted); font-family: monospace; margin-bottom: 0.75rem; }
+    .fleet-ov-stats { display: flex; gap: 1.25rem; }
+    .fleet-stat .stat-n { font-size: 1.3rem; font-weight: 800; color: var(--purple); }
+    .fleet-stat .stat-l { font-size: 0.6rem; color: var(--muted); text-transform: uppercase; letter-spacing: 1px; }
+
+    /* ─── FILTER BAR ─────────────────────────────────────────── */
+    .filter-bar { display: flex; gap: 0.5rem; margin-bottom: 0.75rem; flex-wrap: wrap; }
+    .filter-btn {
+      font-size: 0.72rem; padding: 0.28rem 0.75rem; border-radius: 999px;
+      border: 1px solid var(--border); background: transparent; color: var(--muted);
+      cursor: pointer; transition: all 0.15s;
+    }
+    .filter-btn:hover { border-color: var(--border-hi); color: var(--text); }
+    .filter-btn.active { border-color: var(--purple); color: var(--purple); background: var(--purple-glow); }
+
+    /* ─── TOAST ──────────────────────────────────────────────── */
+    .toast {
+      position: fixed; bottom: 1.5rem; right: 1.5rem;
+      background: var(--purple); color: #fff;
+      padding: 0.6rem 1rem; border-radius: 8px;
+      font-size: 0.8rem; font-weight: 600;
+      opacity: 0; transition: opacity 0.3s; pointer-events: none; z-index: 99;
+    }
+    .toast.show { opacity: 1; }
+
+    /* ─── RESPONSIVE ─────────────────────────────────────────── */
+    @media (max-width: 700px) {
+      #sidebar { display: none; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- ═══ SIDEBAR ════════════════════════════════════════════════════════════ -->
+<nav id="sidebar">
+  <div class="sidebar-logo">
+    <div class="mark">⬡</div>
+    <div>
+      <div class="name">AP3X</div>
+      <div class="sub">FLEET CONTROL OS</div>
+    </div>
+  </div>
+
+  <div class="fleet-selector">
+    <label>Active Fleet</label>
+    <select id="fleet-select" onchange="selectFleet(this.value)">
+      <option value="">— All Fleets —</option>
+    </select>
+  </div>
+
+  <div class="nav">
+    <div class="nav-section">Operational</div>
+    <div class="nav-item active" onclick="showView('overview')" id="nav-overview">
+      <span class="icon">◈</span> Overview
+    </div>
+    <div class="nav-item" onclick="showView('drivers')" id="nav-drivers">
+      <span class="icon">👤</span> Drivers
+      <span class="badge" id="badge-drivers">0</span>
+    </div>
+    <div class="nav-item" onclick="showView('vehicles')" id="nav-vehicles">
+      <span class="icon">🚚</span> Vehicles
+      <span class="badge" id="badge-vehicles">0</span>
+    </div>
+    <div class="nav-item" onclick="showView('devices')" id="nav-devices">
+      <span class="icon">📱</span> Devices
+      <span class="badge" id="badge-devices">0</span>
+    </div>
+
+    <div class="nav-section">Identity</div>
+    <div class="nav-item" onclick="showView('identities')" id="nav-identities">
+      <span class="icon">🔗</span> Identity Links
+      <span class="badge" id="badge-identities">0</span>
+    </div>
+
+    <div class="nav-section">System</div>
+    <div class="nav-item" onclick="showView('events')" id="nav-events">
+      <span class="icon">📡</span> Event Stream
+      <span class="badge" id="badge-events">0</span>
+    </div>
+  </div>
+
+  <div class="sidebar-footer">
+    <span class="pulse-dot"></span>
+    Control Plane · Read-Only
+  </div>
+</nav>
+
+<!-- ═══ MAIN ════════════════════════════════════════════════════════════════ -->
+<div id="main">
+  <div id="topbar">
+    <div class="topbar-title" id="topbar-title">Fleet Overview</div>
+    <div class="topbar-right">
+      <span class="topbar-clock" id="clock">—</span>
+      <button class="btn-refresh" onclick="refresh()">↻ Refresh</button>
+      <span class="topbar-tag">READ ONLY</span>
+    </div>
+  </div>
+
+  <div id="content">
+
+    <!-- ── OVERVIEW ─────────────────────────────────────────── -->
+    <div class="view active" id="view-overview">
+      <div class="kpi-row" id="kpi-overview"></div>
+      <div class="sec-header">
+        <span class="sec-title">All Fleets</span>
+        <span class="sec-count" id="ov-fleet-count">0 fleets</span>
+      </div>
+      <div class="fleet-cards" id="fleet-ov-cards">
+        <div style="color:var(--muted);font-size:0.82rem;padding:1rem 0;">
+          No fleets found. Create one via the Master Controller.
+        </div>
+      </div>
+      <div class="sec-header" style="margin-top:0.5rem;">
+        <span class="sec-title">Recent Events</span>
+      </div>
+      <div class="event-log" id="ov-event-log">
+        <div class="event-log-header">
+          <span>Event Stream</span>
+          <span class="live"><span class="pulse-dot"></span>Live</span>
+        </div>
+        <div class="event-entries" id="ov-event-entries">
+          <div class="no-events">No events logged yet.</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── DRIVERS ───────────────────────────────────────────── -->
+    <div class="view" id="view-drivers">
+      <div class="kpi-row" id="kpi-drivers"></div>
+      <div class="sec-header">
+        <span class="sec-title">Drivers</span>
+        <span class="sec-count" id="driver-count">0</span>
+      </div>
+      <div class="filter-bar" id="driver-filters">
+        <button class="filter-btn active" onclick="setFilter('drivers','all',this)">All</button>
+        <button class="filter-btn" onclick="setFilter('drivers','active',this)">Active</button>
+        <button class="filter-btn" onclick="setFilter('drivers','bound',this)">Bound</button>
+        <button class="filter-btn" onclick="setFilter('drivers','unbound',this)">Unbound</button>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Name</th>
+              <th>License</th>
+              <th>Status</th>
+              <th>Identity</th>
+              <th>Bound Device</th>
+              <th>Fleet</th>
+              <th>Created</th>
+            </tr>
+          </thead>
+          <tbody id="driver-table"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- ── VEHICLES ──────────────────────────────────────────── -->
+    <div class="view" id="view-vehicles">
+      <div class="kpi-row" id="kpi-vehicles"></div>
+      <div class="sec-header">
+        <span class="sec-title">Vehicles</span>
+        <span class="sec-count" id="vehicle-count">0</span>
+      </div>
+      <div class="filter-bar">
+        <button class="filter-btn active" onclick="setFilter('vehicles','all',this)">All</button>
+        <button class="filter-btn" onclick="setFilter('vehicles','active',this)">Active</button>
+        <button class="filter-btn" onclick="setFilter('vehicles','diesel',this)">Diesel</button>
+        <button class="filter-btn" onclick="setFilter('vehicles','electric',this)">Electric</button>
+        <button class="filter-btn" onclick="setFilter('vehicles','hybrid',this)">Hybrid</button>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Type</th>
+              <th>Registration</th>
+              <th>Weight Class</th>
+              <th>Fuel</th>
+              <th>H × W (m)</th>
+              <th>Status</th>
+              <th>Fleet</th>
+              <th>Created</th>
+            </tr>
+          </thead>
+          <tbody id="vehicle-table"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- ── DEVICES ───────────────────────────────────────────── -->
+    <div class="view" id="view-devices">
+      <div class="kpi-row" id="kpi-devices"></div>
+      <div class="sec-header">
+        <span class="sec-title">Devices</span>
+        <span class="sec-count" id="device-count">0</span>
+      </div>
+      <div class="filter-bar">
+        <button class="filter-btn active" onclick="setFilter('devices','all',this)">All</button>
+        <button class="filter-btn" onclick="setFilter('devices','bound',this)">Bound</button>
+        <button class="filter-btn" onclick="setFilter('devices','unbound',this)">Unbound</button>
+        <button class="filter-btn" onclick="setFilter('devices','deregistered',this)">Deregistered</button>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Device ID</th>
+              <th>Platform</th>
+              <th>AP3X Ver.</th>
+              <th>Status</th>
+              <th>Bound Driver</th>
+              <th>Fleet</th>
+              <th>Registered</th>
+            </tr>
+          </thead>
+          <tbody id="device-table"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- ── IDENTITIES ────────────────────────────────────────── -->
+    <div class="view" id="view-identities">
+      <div class="kpi-row" id="kpi-identities"></div>
+      <div class="sec-header">
+        <span class="sec-title">Identity Links — Driver ↔ Device ↔ Fleet</span>
+        <span class="sec-count" id="identity-count">0</span>
+      </div>
+      <div class="filter-bar">
+        <button class="filter-btn active" onclick="setFilter('identities','all',this)">All</button>
+        <button class="filter-btn" onclick="setFilter('identities','active',this)">Active</button>
+        <button class="filter-btn" onclick="setFilter('identities','revoked',this)">Revoked</button>
+      </div>
+      <div class="identity-cards" id="identity-cards"></div>
+    </div>
+
+    <!-- ── EVENTS ────────────────────────────────────────────── -->
+    <div class="view" id="view-events">
+      <div class="kpi-row" id="kpi-events"></div>
+      <div class="sec-header">
+        <span class="sec-title">Event Stream</span>
+        <span class="sec-count" id="event-count">0 events</span>
+      </div>
+      <div class="filter-bar" id="event-type-filters">
+        <button class="filter-btn active" onclick="setFilter('events','all',this)">All</button>
+        <button class="filter-btn" onclick="setFilter('events','fleet',this)">Fleet</button>
+        <button class="filter-btn" onclick="setFilter('events','driver',this)">Driver</button>
+        <button class="filter-btn" onclick="setFilter('events','vehicle',this)">Vehicle</button>
+        <button class="filter-btn" onclick="setFilter('events','device',this)">Device</button>
+        <button class="filter-btn" onclick="setFilter('events','identity',this)">Identity</button>
+        <button class="filter-btn" onclick="setFilter('events','deployment',this)">Deployment</button>
+        <button class="filter-btn" onclick="setFilter('events','permission',this)">Permission</button>
+      </div>
+      <div class="event-log">
+        <div class="event-log-header">
+          <span>Full Event Log</span>
+          <span class="live"><span class="pulse-dot"></span>Read-Only · SSOT</span>
+        </div>
+        <div class="event-entries" id="event-full-entries" style="max-height:600px;"></div>
+      </div>
+    </div>
+
+  </div><!-- /content -->
+</div><!-- /main -->
+
+<div class="toast" id="toast"></div>
+
+<!-- ═══ SCRIPT ══════════════════════════════════════════════════════════════ -->
+<script>
+/* ── SSOT READ ────────────────────────────────────────────────────────── */
+function loadStore() {
+  try {
+    return JSON.parse(localStorage.getItem("ap3x_store") || "null") || {
+      fleets:{}, fleetBrands:{}, deployments:{},
+      drivers:{}, vehicles:{}, devices:{},
+      identities:{}, assignments:{}, permissions:{}, events:[]
+    };
+  } catch(e) { return { fleets:{}, fleetBrands:{}, deployments:{}, drivers:{}, vehicles:{}, devices:{}, identities:{}, assignments:{}, permissions:{}, events:[] }; }
+}
+
+/* ── STATE ───────────────────────────────────────────────────────────── */
+let STORE         = loadStore();
+let activeFleetId = "";
+let activeView    = "overview";
+let filters       = { drivers:"all", vehicles:"all", devices:"all", identities:"all", events:"all" };
+
+/* ── NAV ─────────────────────────────────────────────────────────────── */
+const VIEW_TITLES = {
+  overview:"Fleet Overview", drivers:"Drivers", vehicles:"Vehicles",
+  devices:"Devices", identities:"Identity Links", events:"Event Stream"
+};
+
+function showView(name) {
+  document.querySelectorAll(".view").forEach(v => v.classList.remove("active"));
+  document.querySelectorAll(".nav-item").forEach(n => n.classList.remove("active"));
+  document.getElementById("view-" + name).classList.add("active");
+  document.getElementById("nav-" + name).classList.add("active");
+  document.getElementById("topbar-title").textContent = VIEW_TITLES[name];
+  activeView = name;
+  renderView(name);
+}
+
+/* ── FLEET SELECT ─────────────────────────────────────────────────────── */
+function populateFleetSelect() {
+  const sel = document.getElementById("fleet-select");
+  const prev = sel.value;
+  sel.innerHTML = '<option value="">— All Fleets —</option>';
+  Object.values(STORE.fleets).forEach(f => {
+    const opt = document.createElement("option");
+    opt.value = f.id; opt.textContent = f.name;
+    sel.appendChild(opt);
+  });
+  sel.value = prev && STORE.fleets[prev] ? prev : "";
+  activeFleetId = sel.value;
+}
+
+function selectFleet(id) {
+  activeFleetId = id;
+  renderView(activeView);
+}
+
+/* ── FILTERS ─────────────────────────────────────────────────────────── */
+function setFilter(type, val, btn) {
+  filters[type] = val;
+  btn.closest(".filter-bar").querySelectorAll(".filter-btn").forEach(b => b.classList.remove("active"));
+  btn.classList.add("active");
+  renderView(activeView);
+}
+
+/* ── HELPERS ─────────────────────────────────────────────────────────── */
+function shortId(id) { return id ? id.slice(0,8) + "…" : "—"; }
+function fmtTime(ts) {
+  if (!ts) return "—";
+  return new Date(ts).toLocaleString("en-GB", { day:"2-digit", month:"short", hour:"2-digit", minute:"2-digit", second:"2-digit" });
+}
+function badge(text, type) { return `<span class="badge badge-${type}">${text}</span>`; }
+
+function fleetName(id) {
+  return (STORE.fleets[id] && STORE.fleets[id].name) || shortId(id);
+}
+function driverName(id) {
+  return (STORE.drivers[id] && STORE.drivers[id].name) || shortId(id);
+}
+function devicePlatform(id) {
+  return (STORE.devices[id] && STORE.devices[id].platform) || shortId(id);
+}
+
+function kpi(label, val, sub = "") {
+  return `<div class="kpi"><div class="k-label">${label}</div><div class="k-val">${val}</div>${sub ? `<div class="k-sub">${sub}</div>` : ""}</div>`;
+}
+
+/* ── FILTER HELPERS ──────────────────────────────────────────────────── */
+function scopedFleetFilter(items) {
+  return activeFleetId ? items.filter(i => i.fleetId === activeFleetId) : items;
+}
+
+/* ── RENDER DISPATCH ─────────────────────────────────────────────────── */
+function renderView(name) {
+  switch(name) {
+    case "overview":   renderOverview();   break;
+    case "drivers":    renderDrivers();    break;
+    case "vehicles":   renderVehicles();   break;
+    case "devices":    renderDevices();    break;
+    case "identities": renderIdentities(); break;
+    case "events":     renderEvents();     break;
+  }
+  updateBadges();
+}
+
+/* ── UPDATE SIDEBAR BADGES ───────────────────────────────────────────── */
+function updateBadges() {
+  const s = scopedFleetFilter;
+  document.getElementById("badge-drivers").textContent   = s(Object.values(STORE.drivers)).length;
+  document.getElementById("badge-vehicles").textContent  = s(Object.values(STORE.vehicles)).length;
+  document.getElementById("badge-devices").textContent   = s(Object.values(STORE.devices)).length;
+  document.getElementById("badge-identities").textContent= s(Object.values(STORE.identities)).length;
+  document.getElementById("badge-events").textContent    = STORE.events.length;
+}
+
+/* ── OVERVIEW ─────────────────────────────────────────────────────────── */
+function renderOverview() {
+  const fleets   = Object.values(STORE.fleets);
+  const drivers  = Object.values(STORE.drivers);
+  const vehicles = Object.values(STORE.vehicles);
+  const devices  = Object.values(STORE.devices);
+
+  const boundDevices  = devices.filter(d => d.status === "bound").length;
+  const activeDrivers = drivers.filter(d => d.status === "active").length;
+
+  document.getElementById("kpi-overview").innerHTML =
+    kpi("Fleets",    fleets.length,   "") +
+    kpi("Drivers",   drivers.length,  `${activeDrivers} active`) +
+    kpi("Vehicles",  vehicles.length, "") +
+    kpi("Devices",   devices.length,  `${boundDevices} bound`) +
+    kpi("Events",    STORE.events.length, "total logged");
+
+  document.getElementById("ov-fleet-count").textContent = `${fleets.length} fleet${fleets.length !== 1 ? "s" : ""}`;
+
+  // fleet overview cards
+  const container = document.getElementById("fleet-ov-cards");
+  if (!fleets.length) {
+    container.innerHTML = '<div style="color:var(--muted);font-size:0.82rem;padding:1rem 0;">No fleets found. Create one via the Master Controller.</div>';
+  } else {
+    container.innerHTML = fleets.map(f => {
+      const fd = drivers.filter(d => d.fleetId === f.id).length;
+      const fv = vehicles.filter(v => v.fleetId === f.id).length;
+      const fdv= devices.filter(d => d.fleetId === f.id).length;
+      const brand = STORE.fleetBrands[f.id];
+      const color = brand ? brand.primaryColor : "var(--purple)";
+      return `
+        <div class="fleet-ov-card" onclick="selectAndGo('${f.id}','drivers')"
+             style="border-top:3px solid ${color}">
+          <div class="fleet-ov-name">${f.name}</div>
+          <div class="fleet-ov-id">${f.id}</div>
+          <div class="fleet-ov-stats">
+            <div class="fleet-stat"><div class="stat-n" style="color:${color}">${fd}</div><div class="stat-l">Drivers</div></div>
+            <div class="fleet-stat"><div class="stat-n" style="color:${color}">${fv}</div><div class="stat-l">Vehicles</div></div>
+            <div class="fleet-stat"><div class="stat-n" style="color:${color}">${fdv}</div><div class="stat-l">Devices</div></div>
+          </div>
+        </div>`;
+    }).join("");
+  }
+
+  // recent events (last 20)
+  renderEventEntries("ov-event-entries", STORE.events.slice(-20).reverse(), "all");
+}
+
+function selectAndGo(fleetId, view) {
+  document.getElementById("fleet-select").value = fleetId;
+  activeFleetId = fleetId;
+  showView(view);
+}
+
+/* ── DRIVERS ──────────────────────────────────────────────────────────── */
+function renderDrivers() {
+  let rows = scopedFleetFilter(Object.values(STORE.drivers));
+  const f  = filters.drivers;
+
+  if      (f === "active")  rows = rows.filter(d => d.status === "active");
+  else if (f === "bound")   rows = rows.filter(d => d.boundDeviceId);
+  else if (f === "unbound") rows = rows.filter(d => !d.boundDeviceId);
+
+  document.getElementById("driver-count").textContent = `${rows.length} driver${rows.length !== 1 ? "s" : ""}`;
+  document.getElementById("kpi-drivers").innerHTML =
+    kpi("Total",   scopedFleetFilter(Object.values(STORE.drivers)).length) +
+    kpi("Active",  scopedFleetFilter(Object.values(STORE.drivers)).filter(d=>d.status==="active").length) +
+    kpi("Bound",   scopedFleetFilter(Object.values(STORE.drivers)).filter(d=>d.boundDeviceId).length, "with device") +
+    kpi("Unbound", scopedFleetFilter(Object.values(STORE.drivers)).filter(d=>!d.boundDeviceId).length, "no identity");
+
+  const tbody = document.getElementById("driver-table");
+  if (!rows.length) {
+    tbody.innerHTML = `<tr class="empty-row"><td colspan="7">No drivers found.</td></tr>`;
+    return;
+  }
+  tbody.innerHTML = rows.map(d => `
+    <tr>
+      <td><strong>${d.name}</strong></td>
+      <td>${d.licenseType}</td>
+      <td>${badge(d.status, d.status === "active" ? "active" : "revoked")}</td>
+      <td>${d.identityId ? badge("linked", "bound") : badge("unlinked", "unbound")}</td>
+      <td class="mono">${d.boundDeviceId ? shortId(d.boundDeviceId) : "—"}</td>
+      <td class="mono">${fleetName(d.fleetId)}</td>
+      <td class="mono">${fmtTime(d.createdAt)}</td>
+    </tr>`).join("");
+}
+
+/* ── VEHICLES ─────────────────────────────────────────────────────────── */
+function renderVehicles() {
+  let rows = scopedFleetFilter(Object.values(STORE.vehicles));
+  const f  = filters.vehicles;
+
+  if (f !== "all") {
+    if (f === "active") rows = rows.filter(v => v.status === "active");
+    else rows = rows.filter(v => v.fuelType === f);
+  }
+
+  document.getElementById("vehicle-count").textContent = `${rows.length} vehicle${rows.length !== 1 ? "s" : ""}`;
+  const all = scopedFleetFilter(Object.values(STORE.vehicles));
+  document.getElementById("kpi-vehicles").innerHTML =
+    kpi("Total",    all.length) +
+    kpi("Active",   all.filter(v=>v.status==="active").length) +
+    kpi("Electric", all.filter(v=>v.fuelType==="electric").length, "zero emission") +
+    kpi("Diesel",   all.filter(v=>v.fuelType==="diesel").length);
+
+  const tbody = document.getElementById("vehicle-table");
+  if (!rows.length) {
+    tbody.innerHTML = `<tr class="empty-row"><td colspan="8">No vehicles found.</td></tr>`;
+    return;
+  }
+  tbody.innerHTML = rows.map(v => `
+    <tr>
+      <td><strong>${v.type}</strong></td>
+      <td class="mono">${v.registration || "—"}</td>
+      <td>${v.weightClass || "—"}</td>
+      <td>${v.fuelType || "—"}</td>
+      <td class="mono">${v.height != null ? v.height : "—"} × ${v.width != null ? v.width : "—"}</td>
+      <td>${badge(v.status, v.status === "active" ? "active" : "revoked")}</td>
+      <td class="mono">${fleetName(v.fleetId)}</td>
+      <td class="mono">${fmtTime(v.createdAt)}</td>
+    </tr>`).join("");
+}
+
+/* ── DEVICES ──────────────────────────────────────────────────────────── */
+function renderDevices() {
+  let rows = scopedFleetFilter(Object.values(STORE.devices));
+  const f  = filters.devices;
+
+  if (f !== "all") rows = rows.filter(d => d.status === f);
+
+  document.getElementById("device-count").textContent = `${rows.length} device${rows.length !== 1 ? "s" : ""}`;
+  const all = scopedFleetFilter(Object.values(STORE.devices));
+  document.getElementById("kpi-devices").innerHTML =
+    kpi("Total",        all.length) +
+    kpi("Bound",        all.filter(d=>d.status==="bound").length,   "with driver") +
+    kpi("Unbound",      all.filter(d=>d.status==="unbound").length, "available") +
+    kpi("Deregistered", all.filter(d=>d.status==="deregistered").length);
+
+  const tbody = document.getElementById("device-table");
+  if (!rows.length) {
+    tbody.innerHTML = `<tr class="empty-row"><td colspan="7">No devices found.</td></tr>`;
+    return;
+  }
+  tbody.innerHTML = rows.map(d => {
+    const statusType = d.status === "bound" ? "bound" : d.status === "unbound" ? "unbound" : "deregistered";
+    const driverLabel = d.boundDriverId ? driverName(d.boundDriverId) : "—";
+    return `
+      <tr>
+        <td class="mono">${shortId(d.id)}</td>
+        <td>${d.platform}</td>
+        <td class="mono">${d.ap3xVersion}</td>
+        <td>${badge(d.status, statusType)}</td>
+        <td>${driverLabel}</td>
+        <td class="mono">${fleetName(d.fleetId)}</td>
+        <td class="mono">${fmtTime(d.createdAt)}</td>
+      </tr>`;
+  }).join("");
+}
+
+/* ── IDENTITIES ───────────────────────────────────────────────────────── */
+function renderIdentities() {
+  let rows = scopedFleetFilter(Object.values(STORE.identities));
+  const f  = filters.identities;
+
+  if (f !== "all") rows = rows.filter(i => i.status === f);
+
+  document.getElementById("identity-count").textContent = `${rows.length} link${rows.length !== 1 ? "s" : ""}`;
+  const all = scopedFleetFilter(Object.values(STORE.identities));
+  document.getElementById("kpi-identities").innerHTML =
+    kpi("Total",   all.length) +
+    kpi("Active",  all.filter(i=>i.status==="active").length,  "live bindings") +
+    kpi("Revoked", all.filter(i=>i.status==="revoked").length, "unbound");
+
+  const container = document.getElementById("identity-cards");
+  if (!rows.length) {
+    container.innerHTML = `<div style="color:var(--muted);font-size:0.82rem;padding:1rem 0;">No identity links found.</div>`;
+    return;
+  }
+  container.innerHTML = rows.map(i => {
+    const driver = STORE.drivers[i.driverId];
+    const device = STORE.devices[i.deviceId];
+    const fleet  = STORE.fleets[i.fleetId];
+    const statusType = i.status === "active" ? "bound" : "revoked";
+    return `
+      <div class="identity-card">
+        <div class="id-node">
+          <span class="node-label">Driver</span>
+          <span class="node-val">${driver ? driver.name : shortId(i.driverId)}</span>
+          <span class="node-meta">${driver ? driver.licenseType : ""}</span>
+        </div>
+        <div class="id-arrow">
+          ─── ${badge(i.status, statusType)} ───
+        </div>
+        <div class="id-node">
+          <span class="node-label">Device</span>
+          <span class="node-val">${device ? device.platform : shortId(i.deviceId)}</span>
+          <span class="node-meta">${device ? "v" + device.ap3xVersion : ""}</span>
+        </div>
+      </div>`;
+  }).join("");
+}
+
+/* ── EVENTS ───────────────────────────────────────────────────────────── */
+function renderEvents() {
+  const f = filters.events;
+  let evs = [...STORE.events].reverse();
+  if (f !== "all") evs = evs.filter(e => e.type && e.type.startsWith(f + "."));
+
+  document.getElementById("event-count").textContent = `${STORE.events.length} total · ${evs.length} shown`;
+  document.getElementById("kpi-events").innerHTML =
+    kpi("Total",      STORE.events.length) +
+    kpi("Fleet",      STORE.events.filter(e=>e.type&&e.type.startsWith("fleet.")).length) +
+    kpi("Driver",     STORE.events.filter(e=>e.type&&e.type.startsWith("driver.")).length) +
+    kpi("Vehicle",    STORE.events.filter(e=>e.type&&e.type.startsWith("vehicle.")).length) +
+    kpi("Device",     STORE.events.filter(e=>e.type&&e.type.startsWith("device.")).length) +
+    kpi("Identity",   STORE.events.filter(e=>e.type&&e.type.startsWith("identity.")).length);
+
+  renderEventEntries("event-full-entries", evs, f);
+}
+
+function renderEventEntries(containerId, evs, filter) {
+  const container = document.getElementById(containerId);
+  if (!evs.length) {
+    container.innerHTML = `<div class="no-events">No events${filter !== "all" ? " for this filter" : ""} yet.</div>`;
+    return;
+  }
+  container.innerHTML = evs.map(e => `
+    <div class="event-entry">
+      <span class="ev-time">${new Date(e.timestamp).toLocaleTimeString("en-GB", {hour12:false})}</span>
+      <span class="ev-type">${e.type || "unknown"}</span>
+      <span class="ev-fleet">${e.fleetId ? fleetName(e.fleetId) : "—"}</span>
+    </div>`).join("");
+}
+
+/* ── CLOCK ────────────────────────────────────────────────────────────── */
+function updateClock() {
+  document.getElementById("clock").textContent =
+    new Date().toLocaleTimeString("en-GB", { hour12: false });
+}
+setInterval(updateClock, 1000);
+updateClock();
+
+/* ── AUTO-REFRESH ─────────────────────────────────────────────────────── */
+function refresh() {
+  STORE = loadStore();
+  populateFleetSelect();
+  renderView(activeView);
+  showToast("↻ Store refreshed");
+}
+setInterval(() => { STORE = loadStore(); renderView(activeView); updateBadges(); }, 5000);
+
+/* ── TOAST ────────────────────────────────────────────────────────────── */
+function showToast(msg) {
+  const t = document.getElementById("toast");
+  t.textContent = msg; t.classList.add("show");
+  setTimeout(() => t.classList.remove("show"), 2000);
+}
+
+/* ── INIT ─────────────────────────────────────────────────────────────── */
+populateFleetSelect();
+renderView("overview");
+</script>
+</body>
+</html>
