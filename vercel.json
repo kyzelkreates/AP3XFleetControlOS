@@ -1,53 +1,29 @@
 {
   "version": 2,
-  "buildCommand": null,
-  "outputDirectory": null,
-  "builds": [
-    { "src": "api/fleets.js",  "use": "@vercel/node" },
-    { "src": "api/deploy.js",  "use": "@vercel/node" },
-    { "src": "api/devices.js", "use": "@vercel/node" },
-    { "src": "api/drivers.js", "use": "@vercel/node" },
-    { "src": "api/hazards.js", "use": "@vercel/node" },
-    { "src": "api/safety.js",  "use": "@vercel/node" },
-    { "src": "api/tacho.js",   "use": "@vercel/node" },
-    { "src": "api/nav.js",     "use": "@vercel/node" },
-    { "src": "api/obs.js",     "use": "@vercel/node" },
-    { "src": "ui/**/*.html",   "use": "@vercel/static" },
-    { "src": "pwa/**/*",       "use": "@vercel/static" }
-  ],
-  "routes": [
-    { "src": "/api/fleets",             "dest": "/api/fleets.js"  },
-    { "src": "/api/createFleet",        "dest": "/api/fleets.js"  },
-    { "src": "/api/updateFleet",        "dest": "/api/fleets.js"  },
-
-    { "src": "/api/deploy",             "dest": "/api/deploy.js"  },
-    { "src": "/api/deployFleet",        "dest": "/api/deploy.js"  },
-    { "src": "/api/deployment/(.*)",    "dest": "/api/deploy.js"  },
-
-    { "src": "/api/devices",            "dest": "/api/devices.js" },
-    { "src": "/api/device/(.*)",        "dest": "/api/devices.js" },
-
-    { "src": "/api/drivers",            "dest": "/api/drivers.js" },
-    { "src": "/api/driver/(.*)",        "dest": "/api/drivers.js" },
-
-    { "src": "/api/hazards",            "dest": "/api/hazards.js" },
-    { "src": "/api/hazard/(.*)",        "dest": "/api/hazards.js" },
-
-    { "src": "/api/safety",             "dest": "/api/safety.js"  },
-    { "src": "/api/safetyCheck",        "dest": "/api/safety.js"  },
-
-    { "src": "/api/tacho",              "dest": "/api/tacho.js"   },
-    { "src": "/api/tacho/(.*)",         "dest": "/api/tacho.js"   },
-
-    { "src": "/api/nav",                "dest": "/api/nav.js"     },
-    { "src": "/api/nav/(.*)",           "dest": "/api/nav.js"     },
-
-    { "src": "/api/obs",                "dest": "/api/obs.js"     },
-    { "src": "/api/obs/(.*)",           "dest": "/api/obs.js"     },
-
-    { "src": "/ui/(.*)",                "dest": "/ui/$1"          },
-    { "src": "/pwa/(.*)",               "dest": "/pwa/$1"         },
-    { "src": "/",                       "dest": "/ui/dashboard.html" }
+  "functions": {
+    "api/fleets.js":  { "runtime": "@vercel/node@3.x" },
+    "api/deploy.js":  { "runtime": "@vercel/node@3.x" },
+    "api/devices.js": { "runtime": "@vercel/node@3.x" },
+    "api/drivers.js": { "runtime": "@vercel/node@3.x" },
+    "api/hazards.js": { "runtime": "@vercel/node@3.x" },
+    "api/safety.js":  { "runtime": "@vercel/node@3.x" },
+    "api/tacho.js":   { "runtime": "@vercel/node@3.x" },
+    "api/nav.js":     { "runtime": "@vercel/node@3.x" },
+    "api/obs.js":     { "runtime": "@vercel/node@3.x" }
+  },
+  "rewrites": [
+    { "source": "/api/createFleet",         "destination": "/api/fleets"  },
+    { "source": "/api/updateFleet",         "destination": "/api/fleets"  },
+    { "source": "/api/deployFleet",         "destination": "/api/deploy"  },
+    { "source": "/api/deployment/:path*",   "destination": "/api/deploy"  },
+    { "source": "/api/device/:path*",       "destination": "/api/devices" },
+    { "source": "/api/driver/:path*",       "destination": "/api/drivers" },
+    { "source": "/api/hazard/:path*",       "destination": "/api/hazards" },
+    { "source": "/api/safetyCheck",         "destination": "/api/safety"  },
+    { "source": "/api/tacho/:path*",        "destination": "/api/tacho"   },
+    { "source": "/api/nav/:path*",          "destination": "/api/nav"     },
+    { "source": "/api/obs/:path*",          "destination": "/api/obs"     },
+    { "source": "/",                        "destination": "/ui/dashboard.html" }
   ],
   "headers": [
     {

@@ -239,7 +239,7 @@
     if (!fleet) return alert("Fleet not found");
     showToast(`Deploying ${fleet.name}…`);
     try {
-      const resp = await fetch("/api/deployFleet", {
+      const resp = await fetch("/api/deploy", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
