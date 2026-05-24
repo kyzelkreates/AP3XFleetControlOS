@@ -1,0 +1,795 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>AP3X — Audit Dashboard</title>
+  <style>
+    /* ── TOKENS ─────────────────────────────────────────────────────────── */
+    :root {
+      --bg:       #0a0a0f;
+      --surface:  #12121a;
+      --surface2: #1a1a26;
+      --border:   #2a2a3a;
+      --cyan:     #00e5ff;
+      --green:    #00ff88;
+      --amber:    #ffb300;
+      --red:      #ff3d3d;
+      --text:     #e8eaf0;
+      --muted:    #6b7280;
+      --dim:      #9ca3af;
+      --radius:   10px;
+      --font:     'Inter', system-ui, sans-serif;
+      --mono:     'JetBrains Mono', 'Fira Code', monospace;
+    }
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    html, body { height: 100%; background: var(--bg); color: var(--text);
+                 font-family: var(--font); font-size: 14px; line-height: 1.5; }
+    a { color: var(--cyan); text-decoration: none; }
+    button { cursor: pointer; font-family: var(--font); }
+
+    /* ── LAYOUT ─────────────────────────────────────────────────────────── */
+    .shell      { display: flex; height: 100vh; overflow: hidden; }
+    .sidebar    { width: 220px; background: var(--surface); border-right: 1px solid var(--border);
+                  display: flex; flex-direction: column; flex-shrink: 0; padding: 0 0 16px; }
+    .main       { flex: 1; display: flex; flex-direction: column; overflow: hidden; }
+    .topbar     { background: var(--surface); border-bottom: 1px solid var(--border);
+                  padding: 12px 24px; display: flex; align-items: center;
+                  justify-content: space-between; flex-shrink: 0; }
+    .content    { flex: 1; overflow-y: auto; padding: 24px; display: flex;
+                  flex-direction: column; gap: 20px; }
+
+    /* ── SIDEBAR ─────────────────────────────────────────────────────────── */
+    .sidebar-logo { padding: 18px 20px 14px;
+                    font-size: 1rem; font-weight: 700; color: var(--cyan);
+                    letter-spacing: 0.05em; border-bottom: 1px solid var(--border); }
+    .sidebar-logo span { font-weight: 400; color: var(--muted); font-size: 0.7rem;
+                         display: block; letter-spacing: 0.08em; margin-top: 2px; }
+    .nav-section  { padding: 12px 12px 4px; font-size: 0.62rem; text-transform: uppercase;
+                    letter-spacing: 0.1em; color: var(--muted); }
+    .nav-link     { display: flex; align-items: center; gap: 10px; padding: 8px 16px;
+                    color: var(--dim); font-size: 0.82rem; border-radius: 6px;
+                    margin: 1px 8px; transition: all 150ms; border: none;
+                    background: transparent; width: calc(100% - 16px); text-align: left; }
+    .nav-link:hover  { background: var(--surface2); color: var(--text); }
+    .nav-link.active { background: rgba(0,229,255,0.1); color: var(--cyan); }
+    .nav-link .icon  { font-size: 0.95rem; width: 18px; text-align: center; }
+
+    /* ── TOPBAR ──────────────────────────────────────────────────────────── */
+    .topbar h1 { font-size: 0.95rem; font-weight: 600; }
+    .topbar-actions { display: flex; gap: 8px; align-items: center; }
+    .filter-row { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+    select, input[type="text"], input[type="datetime-local"] {
+      background: var(--surface2); border: 1px solid var(--border);
+      color: var(--text); border-radius: 6px; padding: 6px 10px;
+      font-family: var(--font); font-size: 0.8rem; outline: none; }
+    select:focus, input:focus { border-color: var(--cyan); }
+
+    /* ── BUTTONS ─────────────────────────────────────────────────────────── */
+    .btn { display: inline-flex; align-items: center; gap: 6px; padding: 6px 14px;
+           border: none; border-radius: 6px; font-size: 0.78rem; font-weight: 600;
+           transition: opacity 150ms; }
+    .btn:hover    { opacity: 0.85; }
+    .btn-primary  { background: var(--cyan);    color: #000; }
+    .btn-outline  { background: transparent;    color: var(--dim);
+                    border: 1px solid var(--border); }
+    .btn-outline:hover { border-color: var(--cyan); color: var(--cyan); }
+    .btn-sm { padding: 4px 10px; font-size: 0.72rem; }
+
+    /* ── CARDS ───────────────────────────────────────────────────────────── */
+    .card { background: var(--surface); border: 1px solid var(--border);
+            border-radius: var(--radius); padding: 18px; }
+    .card-title { font-size: 0.65rem; text-transform: uppercase; letter-spacing: 0.08em;
+                  color: var(--muted); margin-bottom: 14px; font-weight: 600; }
+
+    /* ── KPI ROW ─────────────────────────────────────────────────────────── */
+    .kpi-row { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; }
+    .kpi     { background: var(--surface2); border: 1px solid var(--border);
+               border-radius: var(--radius); padding: 16px 14px; }
+    .kpi-value { font-size: 1.6rem; font-weight: 700; color: var(--cyan);
+                 font-variant-numeric: tabular-nums; line-height: 1; }
+    .kpi-label { font-size: 0.65rem; color: var(--muted); margin-top: 4px;
+                 text-transform: uppercase; letter-spacing: 0.05em; }
+    .kpi.green  .kpi-value { color: var(--green); }
+    .kpi.amber  .kpi-value { color: var(--amber); }
+    .kpi.red    .kpi-value { color: var(--red); }
+
+    /* ── TIMELINE STRIP ──────────────────────────────────────────────────── */
+    .timeline-strip { display: flex; gap: 4px; align-items: flex-end;
+                      height: 80px; padding: 4px 0; overflow-x: auto; }
+    .timeline-bar   { flex: 1; min-width: 18px; border-radius: 3px 3px 0 0;
+                      cursor: pointer; position: relative; transition: opacity 150ms; }
+    .timeline-bar:hover { opacity: 0.8; }
+    .timeline-bar .tbar-tooltip {
+      display: none; position: absolute; bottom: calc(100% + 6px); left: 50%;
+      transform: translateX(-50%); background: var(--surface);
+      border: 1px solid var(--border); border-radius: 6px; padding: 6px 10px;
+      font-size: 0.7rem; white-space: nowrap; z-index: 10; }
+    .timeline-bar:hover .tbar-tooltip { display: block; }
+    .timeline-labels { display: flex; gap: 4px; overflow-x: auto; }
+    .timeline-label  { flex: 1; min-width: 18px; text-align: center;
+                       font-size: 0.58rem; color: var(--muted); white-space: nowrap;
+                       overflow: hidden; text-overflow: ellipsis; }
+
+    /* ── EVENT TABLE ─────────────────────────────────────────────────────── */
+    .event-table-wrap { overflow-x: auto; }
+    table   { width: 100%; border-collapse: collapse; }
+    thead   { position: sticky; top: 0; background: var(--surface); z-index: 1; }
+    th      { padding: 8px 12px; text-align: left; font-size: 0.65rem; font-weight: 600;
+              text-transform: uppercase; letter-spacing: 0.06em; color: var(--muted);
+              border-bottom: 1px solid var(--border); white-space: nowrap; }
+    td      { padding: 8px 12px; border-bottom: 1px solid rgba(42,42,58,0.5);
+              font-size: 0.78rem; vertical-align: top; }
+    tr:last-child td { border-bottom: none; }
+    tr:hover td { background: var(--surface2); }
+    .mono   { font-family: var(--mono); font-size: 0.72rem; }
+
+    /* ── SEVERITY BADGES ─────────────────────────────────────────────────── */
+    .badge { display: inline-block; padding: 2px 8px; border-radius: 20px;
+             font-size: 0.65rem; font-weight: 700; letter-spacing: 0.04em; text-transform: uppercase; }
+    .badge-debug    { background: rgba(107,114,128,0.2);  color: var(--muted); }
+    .badge-info     { background: rgba(0,229,255,0.12);   color: var(--cyan); }
+    .badge-warn     { background: rgba(255,179,0,0.15);   color: var(--amber); }
+    .badge-serious  { background: rgba(255,179,0,0.2);    color: var(--amber); }
+    .badge-critical { background: rgba(255,61,61,0.18);   color: var(--red); }
+
+    /* ── EXPORT PANEL ────────────────────────────────────────────────────── */
+    .export-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }
+    .export-card { background: var(--surface2); border: 1px solid var(--border);
+                   border-radius: var(--radius); padding: 16px; }
+    .export-card h3 { font-size: 0.8rem; font-weight: 600; margin-bottom: 4px; }
+    .export-card p  { font-size: 0.72rem; color: var(--muted); margin-bottom: 12px; }
+    .export-format-row { display: flex; gap: 6px; margin-bottom: 10px; }
+    .format-btn { padding: 3px 10px; border-radius: 4px; font-size: 0.7rem; font-weight: 600;
+                  border: 1px solid var(--border); background: transparent; color: var(--muted); }
+    .format-btn.active { border-color: var(--cyan); color: var(--cyan);
+                         background: rgba(0,229,255,0.08); }
+
+    /* ── PAGINATION ──────────────────────────────────────────────────────── */
+    .pagination { display: flex; align-items: center; gap: 8px; justify-content: flex-end;
+                  font-size: 0.78rem; color: var(--muted); }
+    .pagination button { background: var(--surface2); border: 1px solid var(--border);
+                         color: var(--text); border-radius: 5px; padding: 4px 10px;
+                         font-size: 0.75rem; }
+    .pagination button:disabled { opacity: 0.35; }
+
+    /* ── EMPTY STATE ─────────────────────────────────────────────────────── */
+    .empty { padding: 40px; text-align: center; color: var(--muted); }
+    .empty .icon { font-size: 2rem; margin-bottom: 8px; }
+
+    /* ── VIEWS ───────────────────────────────────────────────────────────── */
+    .view { display: none; flex-direction: column; gap: 20px; }
+    .view.active { display: flex; }
+
+    /* ── SCROLLBAR ───────────────────────────────────────────────────────── */
+    ::-webkit-scrollbar { width: 4px; height: 4px; }
+    ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+  </style>
+</head>
+<body>
+
+<div class="shell">
+
+  <!-- ── SIDEBAR ────────────────────────────────────────────────────────── -->
+  <aside class="sidebar">
+    <div class="sidebar-logo">AP3X<span>OBSERVABILITY</span></div>
+
+    <div class="nav-section">Views</div>
+    <button class="nav-link active" data-view="overview">
+      <span class="icon">📊</span> Overview
+    </button>
+    <button class="nav-link" data-view="events">
+      <span class="icon">📋</span> Event Log
+    </button>
+    <button class="nav-link" data-view="fleet">
+      <span class="icon">🚛</span> Fleet Activity
+    </button>
+    <button class="nav-link" data-view="drivers">
+      <span class="icon">👤</span> Driver History
+    </button>
+    <button class="nav-link" data-view="compliance">
+      <span class="icon">⚖️</span> Compliance
+    </button>
+    <button class="nav-link" data-view="export">
+      <span class="icon">⬇️</span> Export
+    </button>
+
+    <div style="flex:1"></div>
+    <div style="padding:12px 16px;font-size:0.65rem;color:var(--muted)">
+      Read-only · RUN 11<br>
+      <span id="sb-event-count" style="color:var(--cyan)">—</span> events in log
+    </div>
+  </aside>
+
+  <!-- ── MAIN ───────────────────────────────────────────────────────────── -->
+  <div class="main">
+    <div class="topbar">
+      <h1 id="topbar-title">Overview</h1>
+      <div class="topbar-actions">
+        <div class="filter-row" id="global-filters">
+          <select id="filter-fleet"><option value="">All Fleets</option></select>
+          <select id="filter-window">
+            <option value="3600000">Last 1h</option>
+            <option value="86400000" selected>Last 24h</option>
+            <option value="604800000">Last 7d</option>
+            <option value="2419200000">Last 28d</option>
+          </select>
+          <input type="text" id="filter-search" placeholder="Search events…" style="width:180px" />
+          <button class="btn btn-primary" id="btn-apply-filters">Apply</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="content" id="content">
+
+      <!-- ── OVERVIEW ─────────────────────────────────────────────────── -->
+      <div class="view active" id="view-overview">
+
+        <div class="kpi-row" id="overview-kpis">
+          <div class="kpi"><div class="kpi-value" id="kpi-events">—</div><div class="kpi-label">Events (window)</div></div>
+          <div class="kpi red"><div class="kpi-value" id="kpi-critical">—</div><div class="kpi-label">Critical</div></div>
+          <div class="kpi amber"><div class="kpi-value" id="kpi-serious">—</div><div class="kpi-label">Serious</div></div>
+          <div class="kpi green"><div class="kpi-value" id="kpi-compliance">—%</div><div class="kpi-label">Compliance Rate</div></div>
+        </div>
+
+        <div class="card">
+          <div class="card-title">Activity Timeline (24h · by hour)</div>
+          <div class="timeline-strip" id="overview-timeline"></div>
+          <div class="timeline-labels" id="overview-timeline-labels"></div>
+        </div>
+
+        <div class="card">
+          <div class="card-title">Recent Critical &amp; Serious Events</div>
+          <div class="event-table-wrap">
+            <table id="overview-events-table">
+              <thead>
+                <tr>
+                  <th>Time</th><th>Type</th><th>Severity</th>
+                  <th>Fleet</th><th>Entity</th><th>Detail</th>
+                </tr>
+              </thead>
+              <tbody id="overview-events-body">
+                <tr><td colspan="6" class="empty"><div class="icon">📭</div>No events loaded</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+      </div><!-- /view-overview -->
+
+      <!-- ── EVENT LOG ─────────────────────────────────────────────────── -->
+      <div class="view" id="view-events">
+        <div class="card">
+          <div class="card-title">Event Log</div>
+          <div class="filter-row" style="margin-bottom:14px;gap:8px">
+            <select id="evlog-category">
+              <option value="">All Categories</option>
+              <option value="compliance">Compliance</option>
+              <option value="safety">Safety</option>
+              <option value="identity">Identity</option>
+              <option value="operations">Operations</option>
+              <option value="hazard">Hazard</option>
+              <option value="sync">Sync</option>
+              <option value="system">System</option>
+            </select>
+            <select id="evlog-severity">
+              <option value="">All Severities</option>
+              <option value="critical">Critical</option>
+              <option value="serious">Serious</option>
+              <option value="warn">Warn</option>
+              <option value="info">Info</option>
+              <option value="debug">Debug</option>
+            </select>
+            <input type="text" id="evlog-type-prefix" placeholder="Type prefix (e.g. tacho.)" style="width:180px" />
+          </div>
+
+          <div class="event-table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th style="width:140px">Time</th>
+                  <th>Type</th>
+                  <th>Severity</th>
+                  <th>Category</th>
+                  <th>Fleet</th>
+                  <th>Entity</th>
+                  <th>Payload</th>
+                </tr>
+              </thead>
+              <tbody id="evlog-body">
+                <tr><td colspan="7" class="empty"><div class="icon">📋</div>Apply filters to load events</td></tr>
+              </tbody>
+            </table>
+          </div>
+          <div class="pagination" style="margin-top:12px">
+            <span id="evlog-summary">—</span>
+            <button id="evlog-prev">‹ Prev</button>
+            <button id="evlog-next">Next ›</button>
+          </div>
+        </div>
+      </div><!-- /view-events -->
+
+      <!-- ── FLEET ACTIVITY ─────────────────────────────────────────────── -->
+      <div class="view" id="view-fleet">
+        <div class="card">
+          <div class="card-title">Fleet Activity Log</div>
+          <div class="filter-row" style="margin-bottom:14px">
+            <select id="fleet-activity-fleet"><option value="">Select fleet…</option></select>
+          </div>
+          <div id="fleet-activity-kpis" class="kpi-row" style="grid-template-columns:repeat(6,1fr);margin-bottom:16px"></div>
+          <div class="event-table-wrap">
+            <table>
+              <thead>
+                <tr><th>Time</th><th>Type</th><th>Severity</th><th>Category</th><th>Entity</th><th>Detail</th></tr>
+              </thead>
+              <tbody id="fleet-activity-body">
+                <tr><td colspan="6" class="empty"><div class="icon">🚛</div>Select a fleet to view activity</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div><!-- /view-fleet -->
+
+      <!-- ── DRIVER HISTORY ─────────────────────────────────────────────── -->
+      <div class="view" id="view-drivers">
+        <div class="card">
+          <div class="card-title">Driver History</div>
+          <div class="filter-row" style="margin-bottom:14px">
+            <select id="driver-select"><option value="">Select driver…</option></select>
+            <button class="btn btn-outline" id="btn-load-driver">Load History</button>
+          </div>
+          <div id="driver-compliance-summary" style="display:none;margin-bottom:16px"></div>
+          <div id="driver-sessions-section" style="display:none">
+            <div class="card-title" style="margin-top:8px">Tachograph Sessions</div>
+            <div id="driver-sessions-list"></div>
+          </div>
+          <div class="card-title" style="margin-top:16px">Events</div>
+          <div class="event-table-wrap">
+            <table>
+              <thead>
+                <tr><th>Time</th><th>Type</th><th>Severity</th><th>Detail</th></tr>
+              </thead>
+              <tbody id="driver-events-body">
+                <tr><td colspan="4" class="empty"><div class="icon">👤</div>Select a driver</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div><!-- /view-drivers -->
+
+      <!-- ── COMPLIANCE ─────────────────────────────────────────────────── -->
+      <div class="view" id="view-compliance">
+        <div class="kpi-row" id="comp-kpis">
+          <div class="kpi green"><div class="kpi-value" id="comp-kpi-rate">—%</div><div class="kpi-label">Fleet Compliance Rate</div></div>
+          <div class="kpi red">  <div class="kpi-value" id="comp-kpi-crit">—</div><div class="kpi-label">Critical Violations</div></div>
+          <div class="kpi amber"><div class="kpi-value" id="comp-kpi-ser">—</div><div class="kpi-label">Serious Violations</div></div>
+          <div class="kpi">     <div class="kpi-value" id="comp-kpi-sess">—</div><div class="kpi-label">Sessions</div></div>
+        </div>
+
+        <div class="card">
+          <div class="card-title">Violation Breakdown</div>
+          <div class="event-table-wrap">
+            <table>
+              <thead>
+                <tr><th>Driver</th><th>Code</th><th>Severity</th><th>Count</th><th>Legal Ref</th><th>Latest</th></tr>
+              </thead>
+              <tbody id="compliance-violations-body">
+                <tr><td colspan="6" class="empty"><div class="icon">⚖️</div>Select a fleet and apply filters</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div><!-- /view-compliance -->
+
+      <!-- ── EXPORT ─────────────────────────────────────────────────────── -->
+      <div class="view" id="view-export">
+        <div class="card">
+          <div class="card-title">Export Configuration</div>
+          <div class="filter-row" style="margin-bottom:16px">
+            <select id="export-fleet"><option value="">Select fleet…</option></select>
+            <input type="datetime-local" id="export-from" />
+            <input type="datetime-local" id="export-to" />
+          </div>
+        </div>
+
+        <div class="export-grid">
+
+          <div class="export-card">
+            <h3>📋 Fleet Compliance</h3>
+            <p>All driver sessions with EU 561 statutory fields. One row per session.</p>
+            <div class="export-format-row">
+              <button class="format-btn active" data-export="fleet-compliance" data-fmt="csv">CSV</button>
+              <button class="format-btn" data-export="fleet-compliance" data-fmt="json">JSON</button>
+              <button class="format-btn" data-export="fleet-compliance" data-fmt="ndjson">NDJSON</button>
+            </div>
+            <button class="btn btn-primary btn-sm" data-action="export" data-type="fleet-compliance">Export</button>
+          </div>
+
+          <div class="export-card">
+            <h3>⚠️ Violation Report</h3>
+            <p>Per-driver violation summary sorted by severity. Regulatory submission ready.</p>
+            <div class="export-format-row">
+              <button class="format-btn active" data-export="violation-report" data-fmt="json">JSON</button>
+              <button class="format-btn" data-export="violation-report" data-fmt="csv">CSV</button>
+            </div>
+            <button class="btn btn-primary btn-sm" data-action="export" data-type="violation-report">Export</button>
+          </div>
+
+          <div class="export-card">
+            <h3>📡 Event Log</h3>
+            <p>Raw audit event stream. NDJSON for SIEM ingestion.</p>
+            <div class="export-format-row">
+              <button class="format-btn active" data-export="event-log" data-fmt="ndjson">NDJSON</button>
+              <button class="format-btn" data-export="event-log" data-fmt="json">JSON</button>
+              <button class="format-btn" data-export="event-log" data-fmt="csv">CSV</button>
+            </div>
+            <button class="btn btn-primary btn-sm" data-action="export" data-type="event-log">Export</button>
+          </div>
+
+        </div>
+
+        <div id="export-status" style="display:none" class="card">
+          <div class="card-title">Export Ready</div>
+          <div id="export-result"></div>
+        </div>
+      </div><!-- /view-export -->
+
+    </div><!-- /content -->
+  </div><!-- /main -->
+</div><!-- /shell -->
+
+<script type="module">
+import { queryEvents, getFleetActivityLog, getDriverHistory,
+         buildTimeline, replayEvents, classifyEvent }
+  from "../core/observability/event-log.js";
+import { exportFleetCompliance, exportViolationReport,
+         exportEventLog, exportDriverCompliance }
+  from "../core/observability/compliance-exporter.js";
+
+// ─── STORE REFERENCE ──────────────────────────────────────────────────────────
+// In production: import from storage.js or receive via API.
+// In standalone: window.AP3X_STORE must be set before this script runs.
+const store  = window.AP3X_STORE || { events: [], fleets: {}, drivers: {}, tacho: {}, routes: {}, hazards: {} };
+const events = store.events || [];
+
+// ─── STATE ────────────────────────────────────────────────────────────────────
+let currentView   = "overview";
+let evlogPage     = 1;
+const evlogPageSz = 50;
+
+// ─── SIDEBAR NAV ──────────────────────────────────────────────────────────────
+document.querySelectorAll(".nav-link[data-view]").forEach(btn => {
+  btn.addEventListener("click", () => {
+    document.querySelectorAll(".nav-link").forEach(b => b.classList.remove("active"));
+    document.querySelectorAll(".view").forEach(v => v.classList.remove("active"));
+    btn.classList.add("active");
+    const v = document.getElementById(`view-${btn.dataset.view}`);
+    if (v) v.classList.add("active");
+    document.getElementById("topbar-title").textContent = btn.textContent.trim();
+    currentView = btn.dataset.view;
+    _renderView(btn.dataset.view);
+  });
+});
+
+// ─── FILTERS ──────────────────────────────────────────────────────────────────
+document.getElementById("btn-apply-filters").addEventListener("click", () => _renderView(currentView));
+document.getElementById("btn-load-driver").addEventListener("click", () => _renderDriverHistory());
+
+// ─── POPULATE FLEET SELECTS ───────────────────────────────────────────────────
+function _populateFleetSelects() {
+  const fleets = Object.values(store.fleets || {});
+  ["filter-fleet","fleet-activity-fleet","export-fleet"].forEach(id => {
+    const sel = document.getElementById(id);
+    if (!sel) return;
+    fleets.forEach(f => {
+      const opt = document.createElement("option");
+      opt.value = f.id; opt.textContent = f.name || f.id;
+      sel.appendChild(opt);
+    });
+  });
+  const drivers = Object.values(store.drivers || {});
+  const dsel = document.getElementById("driver-select");
+  drivers.forEach(d => {
+    const opt = document.createElement("option");
+    opt.value = d.id; opt.textContent = d.name || d.id;
+    dsel.appendChild(opt);
+  });
+  document.getElementById("sb-event-count").textContent = events.length;
+}
+
+// ─── RENDER VIEWS ─────────────────────────────────────────────────────────────
+function _renderView(view) {
+  switch (view) {
+    case "overview":   _renderOverview();   break;
+    case "events":     _renderEventLog();   break;
+    case "fleet":      _renderFleetActivity(); break;
+    case "compliance": _renderCompliance(); break;
+    case "export":     /* static form */    break;
+  }
+}
+
+// ── OVERVIEW ──────────────────────────────────────────────────────────────────
+function _renderOverview() {
+  const window_ = parseInt(document.getElementById("filter-window").value);
+  const fleetId = document.getElementById("filter-fleet").value || null;
+  const sinceMs = Date.now() - window_;
+  const filters = { fleetId, sinceMs };
+
+  const result  = queryEvents(events, filters, { pageSize: 1000 });
+
+  // KPIs
+  const critical   = result.items.filter(e => e.severity === "critical").length;
+  const serious    = result.items.filter(e => e.severity === "serious").length;
+  document.getElementById("kpi-events").textContent   = result.total;
+  document.getElementById("kpi-critical").textContent = critical;
+  document.getElementById("kpi-serious").textContent  = serious;
+
+  // Compliance rate from tacho
+  const sessions = Object.values(store.tacho || {});
+  const clean    = sessions.filter(s => !s.violations?.length).length;
+  const rate     = sessions.length > 0 ? ((clean / sessions.length) * 100).toFixed(1) : "100";
+  document.getElementById("kpi-compliance").textContent = `${rate}%`;
+
+  // Timeline (last 24h by hour)
+  const tl = buildTimeline(events, "hour", { sinceMs: Date.now() - 86400000, fleetId });
+  _renderTimeline(tl);
+
+  // Recent critical/serious
+  const worst = result.items.filter(e => e.severity === "critical" || e.severity === "serious").slice(0, 20);
+  _renderEventsTable("overview-events-body", worst, false);
+}
+
+// ── EVENT LOG ─────────────────────────────────────────────────────────────────
+function _renderEventLog(page = 1) {
+  const window_ = parseInt(document.getElementById("filter-window").value);
+  const sinceMs = Date.now() - window_;
+  const filters = {
+    fleetId:    document.getElementById("filter-fleet").value   || undefined,
+    sinceMs,
+    searchText: document.getElementById("filter-search").value  || undefined,
+    category:   document.getElementById("evlog-category").value || undefined,
+    severity:   document.getElementById("evlog-severity").value || undefined,
+    typePrefix: document.getElementById("evlog-type-prefix").value || undefined
+  };
+
+  const result = queryEvents(events, filters, { page, pageSize: evlogPageSz });
+  evlogPage    = page;
+
+  _renderEventsTable("evlog-body", result.items, true);
+
+  const summary = document.getElementById("evlog-summary");
+  summary.textContent = `${result.total} events — page ${result.page} of ${result.pages}`;
+
+  document.getElementById("evlog-prev").disabled = page <= 1;
+  document.getElementById("evlog-next").disabled = !result.hasMore;
+}
+
+document.getElementById("evlog-prev").addEventListener("click", () => _renderEventLog(evlogPage - 1));
+document.getElementById("evlog-next").addEventListener("click", () => _renderEventLog(evlogPage + 1));
+
+// ── FLEET ACTIVITY ────────────────────────────────────────────────────────────
+function _renderFleetActivity() {
+  const fleetId = document.getElementById("fleet-activity-fleet").value;
+  if (!fleetId) return;
+
+  const window_ = parseInt(document.getElementById("filter-window").value);
+  const log     = getFleetActivityLog(events, fleetId, { sinceMs: Date.now() - window_ });
+
+  // Category KPIs
+  const kpis    = document.getElementById("fleet-activity-kpis");
+  kpis.innerHTML = Object.entries(log.byCategory).map(([cat, count]) =>
+    `<div class="kpi"><div class="kpi-value">${count}</div><div class="kpi-label">${cat}</div></div>`
+  ).join("");
+
+  _renderEventsTable("fleet-activity-body", log.events, false);
+}
+document.getElementById("fleet-activity-fleet").addEventListener("change", _renderFleetActivity);
+
+// ── DRIVER HISTORY ────────────────────────────────────────────────────────────
+function _renderDriverHistory() {
+  const driverId = document.getElementById("driver-select").value;
+  if (!driverId) return;
+
+  const window_ = parseInt(document.getElementById("filter-window").value);
+  const history = getDriverHistory(events, store, driverId, { sinceMs: Date.now() - window_ });
+
+  // Compliance summary
+  const summaryEl = document.getElementById("driver-compliance-summary");
+  if (history.complianceSummary) {
+    const cs = history.complianceSummary;
+    summaryEl.style.display = "";
+    summaryEl.innerHTML = `
+      <div class="kpi-row" style="grid-template-columns:repeat(5,1fr)">
+        <div class="kpi"><div class="kpi-value">${cs.sessionCount}</div><div class="kpi-label">Sessions</div></div>
+        <div class="kpi"><div class="kpi-value">${(cs.totalDriveMin/60).toFixed(1)}h</div><div class="kpi-label">Total Drive</div></div>
+        <div class="kpi red"><div class="kpi-value">${cs.totalViolations}</div><div class="kpi-label">Violations</div></div>
+        <div class="kpi green"><div class="kpi-value">${cs.complianceRate}%</div><div class="kpi-label">Compliance</div></div>
+        <div class="kpi"><div class="kpi-value">${cs.topViolations[0]?.code || "—"}</div><div class="kpi-label">Top Violation</div></div>
+      </div>
+    `;
+  }
+
+  // Sessions list
+  const sessEl = document.getElementById("driver-sessions-section");
+  sessEl.style.display = "";
+  document.getElementById("driver-sessions-list").innerHTML = history.tachoSessions.map(s => `
+    <div style="padding:8px 0;border-bottom:1px solid var(--border);font-size:0.78rem;display:flex;gap:16px;align-items:center">
+      <span class="mono">${new Date(s.startTime).toLocaleDateString("en-GB")}</span>
+      <span>${(s.accum?.todayDriveMin/60||0).toFixed(1)}h drive</span>
+      <span class="badge badge-${s.violations?.length ? "serious" : "info"}">${s.violations?.length || 0} violations</span>
+      <span style="color:var(--muted)">${s.regulation}</span>
+    </div>
+  `).join("") || "<div style='color:var(--muted);padding:8px'>No sessions in window</div>";
+
+  _renderEventsTable("driver-events-body", history.events, false);
+}
+
+// ── COMPLIANCE ────────────────────────────────────────────────────────────────
+function _renderCompliance() {
+  const fleetId = document.getElementById("filter-fleet").value || null;
+  const window_ = parseInt(document.getElementById("filter-window").value);
+  const sinceMs = Date.now() - window_;
+
+  // All tacho sessions in window
+  const sessions = Object.values(store.tacho || {})
+    .filter(s => (!fleetId || s.fleetId === fleetId) && s.startTime >= sinceMs);
+  const allV     = sessions.flatMap(s => s.violations || []);
+  const clean    = sessions.filter(s => !s.violations?.length).length;
+  const rate     = sessions.length ? ((clean / sessions.length) * 100).toFixed(1) : "100";
+
+  document.getElementById("comp-kpi-rate").textContent = `${rate}%`;
+  document.getElementById("comp-kpi-crit").textContent = allV.filter(v => v.severity === "critical").length;
+  document.getElementById("comp-kpi-ser").textContent  = allV.filter(v => v.severity === "serious").length;
+  document.getElementById("comp-kpi-sess").textContent = sessions.length;
+
+  // Violations table — one row per driver+code combination
+  const rows = [];
+  const grouped = {};
+  for (const s of sessions) {
+    const driver = store.drivers?.[s.driverId];
+    for (const v of (s.violations || [])) {
+      const key = `${s.driverId}:${v.code}`;
+      if (!grouped[key]) grouped[key] = { driverName: driver?.name || s.driverId, code: v.code, severity: v.severity, count: 0, latest: 0, legalRef: v.legalRef };
+      grouped[key].count++;
+      grouped[key].latest = Math.max(grouped[key].latest, v.timestamp);
+    }
+  }
+  const tbody = document.getElementById("compliance-violations-body");
+  const items = Object.values(grouped).sort((a,b) => b.count - a.count);
+  tbody.innerHTML = items.length
+    ? items.map(r => `
+        <tr>
+          <td>${r.driverName}</td>
+          <td class="mono">${r.code}</td>
+          <td><span class="badge badge-${r.severity}">${r.severity}</span></td>
+          <td>${r.count}</td>
+          <td class="mono" style="color:var(--muted)">${r.legalRef || "—"}</td>
+          <td class="mono">${new Date(r.latest).toLocaleString("en-GB")}</td>
+        </tr>`).join("")
+    : `<tr><td colspan="6" class="empty">No violations in selected window</td></tr>`;
+}
+
+// ─── TIMELINE ─────────────────────────────────────────────────────────────────
+function _renderTimeline(tl) {
+  const strip  = document.getElementById("overview-timeline");
+  const labels = document.getElementById("overview-timeline-labels");
+  if (!strip || !tl.buckets.length) {
+    if (strip)  strip.innerHTML  = `<div class="empty" style="padding:12px;flex:1">No events in window</div>`;
+    if (labels) labels.innerHTML = "";
+    return;
+  }
+
+  const maxCount = Math.max(...tl.buckets.map(b => b.events.length), 1);
+
+  strip.innerHTML = tl.buckets.map(b => {
+    const h   = Math.max(6, Math.round((b.events.length / maxCount) * 68));
+    const col = b.counts.critical > 0 ? "var(--red)"
+              : b.counts.serious  > 0 ? "var(--amber)"
+              : b.counts.warn     > 0 ? "var(--amber)"
+              : "var(--cyan)";
+    return `
+      <div class="timeline-bar" style="height:${h}px;background:${col};opacity:0.7">
+        <div class="tbar-tooltip">
+          ${b.label}<br>
+          ${b.events.length} event${b.events.length !== 1 ? "s" : ""}<br>
+          ${b.counts.critical ? `🔴 ${b.counts.critical} critical ` : ""}
+          ${b.counts.serious  ? `🟠 ${b.counts.serious} serious`   : ""}
+        </div>
+      </div>`;
+  }).join("");
+
+  labels.innerHTML = tl.buckets.map(b =>
+    `<div class="timeline-label">${b.label.split(",")[0]}</div>`
+  ).join("");
+}
+
+// ─── EVENT TABLE ─────────────────────────────────────────────────────────────
+function _renderEventsTable(tbodyId, items, showCategory) {
+  const tbody = document.getElementById(tbodyId);
+  if (!tbody) return;
+
+  if (!items.length) {
+    const cols = showCategory ? 7 : 6;
+    tbody.innerHTML = `<tr><td colspan="${cols}" class="empty"><div class="icon">📭</div>No events</td></tr>`;
+    return;
+  }
+
+  tbody.innerHTML = items.map(e => {
+    const payload = JSON.stringify(e.payload || {}).slice(0, 80);
+    return `
+      <tr>
+        <td class="mono">${new Date(e.timestamp||0).toLocaleString("en-GB",{hour:"2-digit",minute:"2-digit",second:"2-digit",day:"numeric",month:"short"})}</td>
+        <td class="mono" style="color:var(--dim)">${e.type || "—"}</td>
+        <td><span class="badge badge-${e.severity||"info"}">${e.severity||"info"}</span></td>
+        ${showCategory ? `<td style="color:var(--muted)">${e.category||"—"}</td>` : ""}
+        <td class="mono" style="color:var(--muted)">${e.fleetId||"—"}</td>
+        <td class="mono" style="color:var(--muted)">${e.entityId||"—"}</td>
+        <td style="color:var(--dim);max-width:260px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${payload}">${payload}</td>
+      </tr>`;
+  }).join("");
+}
+
+// ─── EXPORT ───────────────────────────────────────────────────────────────────
+document.addEventListener("click", (e) => {
+  // Format select toggle
+  const fmtBtn = e.target.closest(".format-btn");
+  if (fmtBtn) {
+    const key = fmtBtn.dataset.export;
+    document.querySelectorAll(`.format-btn[data-export="${key}"]`)
+      .forEach(b => b.classList.remove("active"));
+    fmtBtn.classList.add("active");
+    return;
+  }
+
+  // Export trigger
+  if (e.target.dataset.action === "export") {
+    const type    = e.target.dataset.type;
+    const fleetId = document.getElementById("export-fleet").value;
+    const fromEl  = document.getElementById("export-from").value;
+    const toEl    = document.getElementById("export-to").value;
+    const sinceMs = fromEl ? new Date(fromEl).getTime() : Date.now() - 28*24*60*60*1000;
+    const untilMs = toEl   ? new Date(toEl).getTime()   : Date.now();
+    const fmtEl   = document.querySelector(`.format-btn.active[data-export="${type}"]`);
+    const format  = fmtEl?.dataset.fmt || "json";
+
+    if (!fleetId && type !== "event-log") {
+      document.getElementById("export-status").style.display = "";
+      document.getElementById("export-result").innerHTML = `<span style="color:var(--red)">Select a fleet first.</span>`;
+      return;
+    }
+
+    try {
+      let result;
+      switch (type) {
+        case "fleet-compliance":  result = exportFleetCompliance(store, fleetId, { sinceMs, untilMs, format }); break;
+        case "violation-report":  result = exportViolationReport(store, fleetId, { sinceMs, untilMs, format }); break;
+        case "event-log":         result = exportEventLog(store, events, fleetId || null, { sinceMs, untilMs, format }); break;
+      }
+
+      // Trigger browser download
+      const blob = new Blob([result.content], { type: "text/plain" });
+      const url  = URL.createObjectURL(blob);
+      const a    = document.createElement("a");
+      a.href = url; a.download = result.filename; a.click();
+      URL.revokeObjectURL(url);
+
+      document.getElementById("export-status").style.display = "";
+      document.getElementById("export-result").innerHTML = `
+        <span style="color:var(--green)">✓</span>
+        <strong>${result.filename}</strong> —
+        ${result.recordCount} records, ${format.toUpperCase()}
+        <span style="color:var(--muted)">(${new Date(result.generatedAt).toLocaleTimeString("en-GB")})</span>
+      `;
+    } catch (err) {
+      document.getElementById("export-status").style.display = "";
+      document.getElementById("export-result").innerHTML = `<span style="color:var(--red)">Error: ${err.message}</span>`;
+    }
+  }
+});
+
+// ─── BOOT ─────────────────────────────────────────────────────────────────────
+_populateFleetSelects();
+_renderOverview();
+</script>
+</body>
+</html>

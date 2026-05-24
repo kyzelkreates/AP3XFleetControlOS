@@ -1,0 +1,19 @@
+{
+  "name": "AP3X Driver",
+  "short_name": "AP3X",
+  "description": "AP3X offline-first driver runtime — route execution, hazard reporting, tachograph logging.",
+  "start_url": "/pwa/index.html",
+  "scope": "/pwa/",
+  "display": "standalone",
+  "orientation": "portrait-primary",
+  "background_color": "#0a0a0f",
+  "theme_color": "#00e5ff",
+  "icons": [
+    { "src": "icons/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any maskable" },
+    { "src": "icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any maskable" }
+  ],
+  "screenshots": [],
+  "categories": ["navigation", "logistics", "productivity"],
+  "prefer_related_applications": false,
+  "related_applications": []
+}
