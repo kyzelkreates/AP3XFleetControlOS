@@ -1,16 +1,5 @@
 {
   "version": 2,
-  "functions": {
-    "api/fleets.js":  { "runtime": "@vercel/node@3.x" },
-    "api/deploy.js":  { "runtime": "@vercel/node@3.x" },
-    "api/devices.js": { "runtime": "@vercel/node@3.x" },
-    "api/drivers.js": { "runtime": "@vercel/node@3.x" },
-    "api/hazards.js": { "runtime": "@vercel/node@3.x" },
-    "api/safety.js":  { "runtime": "@vercel/node@3.x" },
-    "api/tacho.js":   { "runtime": "@vercel/node@3.x" },
-    "api/nav.js":     { "runtime": "@vercel/node@3.x" },
-    "api/obs.js":     { "runtime": "@vercel/node@3.x" }
-  },
   "rewrites": [
     { "source": "/api/createFleet",         "destination": "/api/fleets"  },
     { "source": "/api/updateFleet",         "destination": "/api/fleets"  },
