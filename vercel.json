@@ -1,5 +1,6 @@
 {
   "version": 2,
+  "outputDirectory": ".",
   "rewrites": [
     { "source": "/api/createFleet",         "destination": "/api/fleets"  },
     { "source": "/api/updateFleet",         "destination": "/api/fleets"  },
